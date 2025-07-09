@@ -18,7 +18,11 @@ const https = require("https");
 require("dotenv").config();
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers,
+  ],
 });
 
 const commands = [
@@ -49,6 +53,15 @@ const commands = [
         .setName("url")
         .setDescription("Image URL to pet (optional)")
         .setRequired(false)
+    ),
+  new SlashCommandBuilder()
+    .setName("members")
+    .setDescription("Get the member count of the server (and other info)")
+    .addStringOption((option) =>
+      option
+        .setName("code")
+        .setDescription("Invite code to get the member count for")
+        .setRequired(true)
     ),
   // Message context menu command
   new ContextMenuCommandBuilder()
@@ -282,6 +295,57 @@ client.on("interactionCreate", async (interaction) => {
       const attachment = new AttachmentBuilder(gif, { name: "petpet.gif" });
 
       await interaction.editReply({ files: [attachment] });
+    } else if (interaction.commandName === "members") {
+      // send information about the server members in a nice embed
+      // embed example:
+      // Server Members
+      // Users: 123  Online Members: 45
+      // Bots: 45    Online Bots: 10
+      // Total: 168  Offline: 113
+      const guildId = interaction.options
+        .getString("code")
+        .replace("discord.gg", "")
+        .replace("https://", "")
+        .replace("http://", "");
+      const guildUrl = `https://discord.com/api/v10/invites/${guildId}?with_counts=true`;
+      const guildInfo = await fetch(guildUrl, {
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_TOKEN}`,
+        },
+      });
+      const guildData = await guildInfo.json();
+      const name = guildData.guild.name || "Unknown Server";
+      const iconUrl = guildData.guild.icon;
+      const online = guildData.approximate_presence_count;
+      const total = guildData.approximate_member_count;
+      const color = guildData.profile.brand_color_primary || 0x3ab8ba; // default to teal if no color
+      const embed = new EmbedBuilder()
+        .setTitle(name)
+        .setThumbnail(
+          iconUrl
+            ? `https://cdn.discordapp.com/icons/${guildData.guild.id}/${iconUrl}.png?size=128`
+            : "https://cdn.discordapp.com/embed/avatars/0.png"
+        )
+        .setColor(color)
+        .setFooter({
+          text: `Made by Sillycord`,
+          iconURL:
+            "https://cdn.discordapp.com/avatars/1390815472412397701/a0fa77580a39404d81a6165e1f400718.webp", // sillycord pfp
+        })
+        .addFields(
+          {
+            name: "Online Users",
+            value: `${online}`,
+            inline: true,
+          },
+          {
+            name: "Total",
+            value: `${total}`,
+            inline: true,
+          }
+        )
+        .setTimestamp();
+      await interaction.reply({ embeds: [embed] });
     }
   }
 
