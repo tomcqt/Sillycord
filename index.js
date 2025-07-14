@@ -121,8 +121,9 @@ client.on("ready", () => {
     status: "online",
     activities: [
       {
-        name: `sillies since ${getReadableTimeAgo(1751667836)}`,
-        type: ActivityType.Watching,
+        state: `Being silly since ${getReadableTimeAgo(1751667836)}`,
+        name: "sillies status",
+        type: ActivityType.Custom,
       },
     ],
   });
@@ -132,8 +133,9 @@ client.on("ready", () => {
       status: "online",
       activities: [
         {
-          name: `sillies since ${getReadableTimeAgo(1751667836)}`,
-          type: ActivityType.Watching,
+          state: `Being silly since ${getReadableTimeAgo(1751667836)}`,
+          name: "sillies status",
+          type: ActivityType.Custom,
         },
       ],
     });
