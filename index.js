@@ -401,52 +401,98 @@ client.on("interactionCreate", async (interaction) => {
 
       const width = 800;
       const height = 250;
+      const canvas = createCanvas(width, height);
+      const ctx = canvas.getContext("2d");
 
-      // 1. Download the avatar as buffer
       const avatarUrl = author.displayAvatarURL({
         extension: "png",
         size: 512,
       });
       const avatarBuffer = await downloadImage(avatarUrl);
 
-      // 2. Use sharp to crop+blur it like CSS background-size: cover
+      // ====== Background Blur ======
       const blurredAvatarBuffer = await sharp(avatarBuffer)
         .resize(width, height, { fit: "cover" })
         .blur(20)
         .toBuffer();
-
-      // 3. Load blurred avatar into canvas
       const bgImg = await loadImage(blurredAvatarBuffer);
-      const canvas = createCanvas(width, height);
-      const ctx = canvas.getContext("2d");
       ctx.drawImage(bgImg, 0, 0, width, height);
-
-      // 4. Overlay dark layer
       ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
       ctx.fillRect(0, 0, width, height);
 
-      // 5. Draw circular PFP
+      // ====== Draw Reply Box if applicable ======
+      let topOffset = 0;
+      if (msg.reference && msg.reference.messageId) {
+        try {
+          const referencedMessage = await msg.channel.messages.fetch(
+            msg.reference.messageId
+          );
+
+          const replyAuthor = referencedMessage.author;
+          const replyDisplayName =
+            replyAuthor.displayName || replyAuthor.username;
+          const replyAvatarUrl = replyAuthor.displayAvatarURL({
+            extension: "png",
+            size: 128,
+          });
+          const replyAvatarBuffer = await downloadImage(replyAvatarUrl);
+          const replyAvatar = await loadImage(replyAvatarBuffer);
+          const replyContent =
+            referencedMessage.content?.slice(0, 60) || "[no content]";
+
+          // Draw reply icon (🡐)
+          ctx.font = "28px Montserrat";
+          ctx.fillStyle = "#aaa";
+          const replyIcon = await loadImage(path.join(__dirname, "reply.png"));
+          ctx.drawImage(replyIcon, 40, 30, 24, 18); // (x, y, width, height)
+
+          // Draw replied user avatar (rounded square)
+          const pfpSize = 40;
+          const pfpX = 80;
+          const pfpY = 20;
+          ctx.save();
+          roundedRectPath(ctx, pfpX, pfpY, pfpSize, pfpSize, 10);
+          ctx.clip();
+          ctx.drawImage(replyAvatar, pfpX, pfpY, pfpSize, pfpSize);
+          ctx.restore();
+
+          // Draw replied user name and message
+          ctx.fillStyle = "#ddd";
+          ctx.font = "bold 20px Montserrat";
+          ctx.fillText(replyDisplayName, pfpX + 50, 38);
+
+          ctx.font = "16px Montserrat";
+          ctx.fillStyle = "#ccc";
+          ctx.fillText(`"${replyContent}"`, pfpX + 50, 60);
+
+          topOffset = 20; // push main message lower
+        } catch (err) {
+          console.error("Failed to fetch replied message", err);
+        }
+      }
+
+      // ====== Draw Author PFP ======
       const pfpImg = await loadImage(avatarBuffer);
       const pfpSize = 96;
       const pfpX = 40;
-      const pfpY = 70;
+      const pfpY = 70 + topOffset;
+
       ctx.save();
-      const radius = 20; // adjust corner radius
-      roundedRectPath(ctx, pfpX, pfpY, pfpSize, pfpSize, radius);
+      roundedRectPath(ctx, pfpX, pfpY, pfpSize, pfpSize, 20);
       ctx.clip();
       ctx.drawImage(pfpImg, pfpX, pfpY, pfpSize, pfpSize);
       ctx.restore();
 
-      // 6. Draw text
+      // ====== Draw Main Text ======
       ctx.fillStyle = "white";
       ctx.font = "28px Montserrat";
-      ctx.fillText(displayName, 160, 110);
+      ctx.fillText(displayName, 160, 110 + topOffset);
 
       ctx.font = "24px Montserrat";
       const content = msg.content?.trim() || "[no content]";
-      wrapText(ctx, `"${content}"`, 160, 150, 600, 30);
+      wrapText(ctx, `"${content}"`, 160, 150 + topOffset, 600, 30);
 
-      // 7. Footer
+      // ====== Footer ======
       ctx.font = "14px Montserrat";
       ctx.fillStyle = "#ccc";
       ctx.textAlign = "left";
@@ -458,9 +504,10 @@ client.on("interactionCreate", async (interaction) => {
         height - 20
       );
 
-      // 8. Send image
       const buffer = canvas.toBuffer("image/png");
-      const attachment = new AttachmentBuilder(buffer, { name: "quote.png" });
+      const attachment = new AttachmentBuilder(buffer, {
+        name: `SillycordQuote.png`,
+      });
       await interaction.reply({ files: [attachment] });
     }
   }
