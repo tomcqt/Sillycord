@@ -67,10 +67,10 @@ const commands = [
     ),
   // Message context menu command
   new ContextMenuCommandBuilder()
-    .setName("Sillify! :3")
+    .setName("🐱 Sillify")
     .setType(ApplicationCommandType.Message),
   new ContextMenuCommandBuilder()
-    .setName("Quote Message")
+    .setName("📝 Quote Message")
     .setType(ApplicationCommandType.Message),
 ].map((command) => command.toJSON());
 
@@ -355,7 +355,7 @@ client.on("interactionCreate", async (interaction) => {
 
   // Handle message context menu
   if (interaction.isMessageContextMenuCommand()) {
-    if (interaction.commandName === "Sillify! :3") {
+    if (interaction.commandName === "🐱 Sillify") {
       const message = interaction.targetMessage;
 
       // Sillify logic
@@ -394,7 +394,7 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       await interaction.reply({ embeds: [embed] });
-    } else if (interaction.commandName === "Quote Message") {
+    } else if (interaction.commandName === "📝 Quote Message") {
       const msg = interaction.targetMessage;
       const author = msg.author;
       const displayName = author.displayName || author.username;
